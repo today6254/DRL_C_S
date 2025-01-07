@@ -10,7 +10,7 @@ To run the training, fine-tuning, and testing process and save the model, just r
 cd src
 python main.py
 ```
-The result will be saved in the `saved_model` folder.
+The result will be saved in the project's root directory.
 ### Requirements
 ```
 python            3.9.12
