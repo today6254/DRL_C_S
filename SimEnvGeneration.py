@@ -10,50 +10,50 @@ import tkinter as tk
 import os
 from datetime import datetime
 
-# 创建Tkinter应用程序窗口
+# Tkinterアプリケーションウィンドウを作成
 window = tk.Tk()
 
-# 参数
-k = 10  # 生成k个地图
-n, m = 10, 10  # 每个地图的大小
-obs_ratio = 0.3  # 障碍物地图占比
-obs_size = 1  # 障碍物的最小尺寸：obs_size * obs_size
-single_r = 1
+# パラメータ
+k = 10  # 生成するマップ数
+n, m = 10, 10  # 各マップのサイズ
+obs_ratio = 0.3  # 障害物の割合
+obs_size = 1  # 障害物の最小サイズ：obs_size * obs_size
+single_r = 1  # 単独障害物比率
 
-# 创建UI控件
-label_k = tk.Label(window, text="生成地图数量(k):")
+# UIコントロールを作成
+label_k = tk.Label(window, text="生成するマップ数 (k):")
 label_k.grid(row=0, column=0)
 entry_k = tk.Entry(window)
 entry_k.grid(row=0, column=1)
 
-label_n = tk.Label(window, text="地图大小(n):")
+label_n = tk.Label(window, text="マップサイズ (n):")
 label_n.grid(row=1, column=0)
 entry_n = tk.Entry(window)
 entry_n.grid(row=1, column=1)
 
-label_m = tk.Label(window, text="地图大小(m):")
+label_m = tk.Label(window, text="マップサイズ (m):")
 label_m.grid(row=2, column=0)
 entry_m = tk.Entry(window)
 entry_m.grid(row=2, column=1)
 
-label_obs_ratio = tk.Label(window, text="障碍物占比(obs_ratio):")
+label_obs_ratio = tk.Label(window, text="障害物比率 (obs_ratio):")
 label_obs_ratio.grid(row=3, column=0)
 entry_obs_ratio = tk.Entry(window)
 entry_obs_ratio.grid(row=3, column=1)
 
-label_obs_size = tk.Label(window, text="障碍物最小尺寸(obs_size):")
+label_obs_size = tk.Label(window, text="障害物最小サイズ (obs_size):")
 label_obs_size.grid(row=4, column=0)
 entry_obs_size = tk.Entry(window)
 entry_obs_size.grid(row=4, column=1)
 
-label_single_r = tk.Label(window, text="独立障碍比例(single_r):")
+label_single_r = tk.Label(window, text="単独障害物比率 (single_r):")
 label_single_r.grid(row=5, column=0)
 entry_single_r = tk.Entry(window)
 entry_single_r.grid(row=5, column=1)
 
-# 定义按钮点击事件
+# ボタンクリック時の処理を定義
 def generate_maps():
-    # 获取输入的参数值
+    # 入力パラメータの取得
     k = int(entry_k.get())
     n = int(entry_n.get())
     m = int(entry_m.get())
@@ -65,17 +65,17 @@ def generate_maps():
         m = m // obs_size
         n = n // obs_size
 
-    # 获取当前工作路径作为根目录路径
+    # 現在の作業ディレクトリをルートディレクトリパスとして取得
     root_directory_path = os.getcwd()
 
-    # 创建目录名
+    # # ディレクトリ名を作成
     now = datetime.now()
     current_time = now.strftime("%H-%M")
     current_date = now.strftime("%Y-%m-%d")
     directory_name = f"{current_date}_{n}_{m}_{obs_ratio}_{obs_size}"
     directory_path = os.path.join(root_directory_path, directory_name)
 
-    # 如果目录不存在，则创建它
+    # ディレクトリが存在しなければ作成
     if not os.path.exists(directory_path):
         os.makedirs(directory_path)
 
@@ -83,7 +83,7 @@ def generate_maps():
         map_data = generate_map(n, m, obs_ratio)
         if obs_size > 1:
             map_data = np.kron(map_data, np.ones((obs_size, obs_size), dtype=int))
-        # 构建完整的文件名，包括目录和文件名
+        # ディレクトリを含むファイル名を構築
         filename = os.path.join(directory_path, f'map_{i + 1}.txt')
         save_map(map_data, filename)
 
@@ -126,7 +126,7 @@ def check_connectivity(map_data):
                 return False
     return True
 
-#定义0为可行动区域，1为障碍物,1的比例不应超过60%
+# 0 を通行可能領域、1 を障害物と定義。1 の割合は 60% を超えないことを推奨
 def generate_map(n, m, ratio):
     map_data = [[1 for _ in range(m)] for _ in range(n)]
     total_cells = n * m
@@ -134,18 +134,18 @@ def generate_map(n, m, ratio):
     num_zeros = int(total_cells * (1 - ratio + ratio * single_r))
     num_extra_ones = total_cells * ratio * single_r
 
-    # 生成一个全为0的地图
+    # 全体を 0 にするための開始点を設定
     map_data[0][0] = 0
 
-    # 用于记录每个位置是否已被访问
+    # 各位置が訪問済みかを記録
     visited = [[False for _ in range(m)] for _ in range(n)]
     visited[0][0] = True
 
-    # 用于记录与初始位置相邻的位置
+    # 初期位置に隣接する位置を記録するスタック
     stack = [(random.randint(0, n), random.randint(0, m))]
     num_zeros -= 1
 
-    # 使用随机洪泛算法填充0
+    # ランダムなフラッドフィル（拡張）アルゴリズムで 0 を埋める
     while len(stack) > 0:
         i, j = stack.pop()
 
@@ -154,7 +154,7 @@ def generate_map(n, m, ratio):
         if num_zeros <= 0:
             continue
 
-        # 打乱方向的顺序
+        # 方向をランダムに並べ替える
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
         random.shuffle(directions)
 
@@ -172,7 +172,7 @@ def generate_map(n, m, ratio):
             if map_data[i][j] == 0:
                 map_data[i][j] = 1
 
-                if check_connectivity(map_data):  # 判断连通性
+                if check_connectivity(map_data):  # 連結性を確認
                     break
                 else:
                     map_data[i][j] = 0
@@ -228,9 +228,9 @@ def visualize_map(map_data, color_0, color_1):
 
     plt.show()
 
-# 创建生成地图按钮
-button_generate = tk.Button(window, text="生成地图", command=generate_maps)
+# マップ生成ボタンを作成
+button_generate = tk.Button(window, text="マップを生成", command=generate_maps)
 button_generate.grid(row=6, column=0, columnspan=2)
 
-# 启动主循环
+# メインループを開始
 window.mainloop()

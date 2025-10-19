@@ -25,7 +25,7 @@ ModelIdex = 24000
 action_size = 540
 seed = 13
 
-filename = []  # 文件名
+filename = []  # ファイル名
 af_filename = []
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -55,30 +55,30 @@ def read_map_from_file(filename):
 
 def read_af_from_file(filename):
     with open(filename, "rb") as f:
-        # 读取头部信息
+        # ヘッダー情報を読み取る
         packed_data_head = f.read(8)
         rows, cols = struct.unpack('<ii', packed_data_head)
 
-        # 读取数据
+        # データを読み取る
         packed_data = f.read()
 
-    # 将打包的数据解包并转换为浮点数数组，注意这里的shape与af_data的shape相匹配
+    # パックされたデータを展開して浮動小数点配列に変換（af_data の shape と一致させる）
     af_data = np.frombuffer(packed_data, dtype=np.float32).reshape((rows, cols, 8)).copy(order='K')
 
-    # 计算每个向量的范数
+    # 各ベクトルのノルムを計算
     norm_values = np.linalg.norm(af_data, axis=2)
 
-    # 检查范数是否为零，如果为零则跳过该向量的计算
+    # ノルムがゼロか確認し、ゼロならそのベクトルの計算をスキップ
     mask = norm_values != 0
 
-    # 只对范数不为零的向量进行归一化操作
+    # ノルムがゼロでないベクトルのみ正規化を行う
     af_data[mask] = af_data[mask] / norm_values[mask, np.newaxis]
 
     return af_data
 
 
 def main(agent_num=1):
-    print('开始训练')
+    print('学習開始')
 
     expl_noise = 0.25
     save_interval = 2000  # interval to save model
@@ -89,7 +89,7 @@ def main(agent_num=1):
     if render:
         pygame.init()
         screen = pygame.display.set_mode((1000, 1000))
-        pygame.display.set_caption("人群仿真环境")
+        pygame.display.set_caption("群衆シミュレーション環境")
 
     episode = 0
     map_data = read_map_from_file(filename[0])
@@ -115,7 +115,7 @@ def main(agent_num=1):
         model.load(ModelIdex)
     replay_buffer = ReplayBuffer.ReplayBuffer(state_dim, action_dim, max_size=int(1e6))
     for file_index in range(len(filename)):
-        print("当前第" + str(file_index + 1) + "个地图")
+        print("現在第" + str(file_index + 1) + "個目のマップ")
         step = 0
         last_step = 0
         if file_index % 2 == 0:
@@ -187,7 +187,7 @@ def main(agent_num=1):
                 count = 0
                 for i in range(agent_num):
                     if terminated[i]:
-                        # 计算平均损耗
+                        # 平均コストを計算
                         if arrived[i]:
                             dis = env.distance(env.start[i], env.target[i])
                             tot_dis_history.put(dis)
@@ -199,7 +199,7 @@ def main(agent_num=1):
                         if arrive_history.full():
                             last_his = arrive_history.get()
 
-                        # 同步退出队列
+                        # 同期的にキューから取り出す
                         if last_his:
                             tot_dis -= tot_dis_history.get()
                             tot_step -= tot_step_history.get()
@@ -221,12 +221,12 @@ def main(agent_num=1):
                         if (episode + 1) % save_interval == 0:
                             model.save(episode + 1)
                             # plt.plot(all_ep_r)
-                            # plt.savefig('seed{}-ep{}.png'.format(random_seed,episode+1))最新进展
+                            # plt.savefig('seed{}-ep{}.png'.format(random_seed,episode+1))最新の進捗
                             # plt.clf()
 
                     '''record & log'''
                     # all_ep_r.append(ep_r)
-                    tmp_tot_dis = 0#防止除0
+                    tmp_tot_dis = 0# ゼロ除算防止
                     if tot_dis == 0:
                         tmp_tot_dis = 1
                     else:

@@ -15,40 +15,40 @@ with_af = True
 class AgentPathQueue:
     def __init__(self, agent_num, history_length):
         """
-        初始化代理位置队列
-        :param agent_num: 代理的数量
-        :param history_length: 每个代理保存的历史位置数量
+        エージェントの位置キューを初期化する
+        :param agent_num: エージェント数
+        :param history_length: 各エージェントが保持する履歴の長さ
         """
         self.agent_num = agent_num
         self.history_length = history_length
-        # 初始化代理位置队列，每个代理一个deque
+        # 各エージェント用にdequeを初期化
         self.path_queue = [deque(maxlen=history_length) for _ in range(agent_num)]
 
     def add_position(self, agent_id, position):
         """
-        为指定代理添加当前位置到其历史位置队列中
-        :param agent_id: 代理的ID（索引）
-        :param position: 代理的当前位置（可以是任何可哈希或可比较的对象）
+        指定したエージェントの現在位置を履歴キューに追加する
+        :param agent_id: エージェントID（インデックス）
+        :param position: エージェントの現在位置（任意の比較可能なオブジェクト）
         """
         if self.check_agent_id(agent_id):
             self.path_queue[agent_id].append(position)
 
     def get_positions(self, agent_id):
         """
-        获取指定代理的历史位置队列
-        :param agent_id: 代理的ID（索引）
-        :return: 代理的历史位置队列（deque）
+        指定したエージェントの位置履歴を取得する
+        :param agent_id: エージェントID（インデックス）
+        :return: 位置履歴（deque）のリストコピー
         """
         if self.check_agent_id(agent_id):
-            return list(self.path_queue[agent_id])  # 返回列表副本，避免外部修改
+            return list(self.path_queue[agent_id])  # リストコピーを返して外部からの変更を防ぐ
 
     def clear_agent_path(self, agent_id):
         """
-        清除指定代理的历史位置数据
-        :param agent_id: 代理的ID（索引）
+        指定したエージェントの位置履歴をクリアする
+        :param agent_id: エージェントID（インデックス）
         """
         if self.check_agent_id(agent_id):
-            # 重新初始化deque，保持maxlen属性
+            # maxlenを維持してdequeを再初期化
             self.path_queue[agent_id] = deque(maxlen=self.history_length)
 
     def check_agent_id(self, agent_id):
@@ -59,7 +59,7 @@ class AgentPathQueue:
 
     def __str__(self):
         """
-        返回所有代理历史位置的字符串表示
+        全エージェントの位置履歴を文字列で返す
         """
         return "\n".join(f"Agent {i}: {list(q)}" for i, q in enumerate(self.path_queue))
 
@@ -70,10 +70,10 @@ class CrowdSteeringEnv(gym.Env):
     def __init__(self, render_mode=None, map_data=[], af_data=0, agent_num=1):
         self.map_data = map_data
         self.af_data = af_data.tolist()
-        self.window_size = 1000  # 暂时默认方形，此为边长
+        self.window_size = 1000  # 暫定的に正方形。ウィンドウの一辺の長さ
         self.rows = len(map_data)
         self.cols = len(map_data[0])
-        self.cell_size = self.window_size / self.rows  # 基于既定的窗口大小计算每一个cell的尺寸
+        self.cell_size = self.window_size / self.rows  # 既定のウィンドウサイズに基づいてセルのサイズを計算
         self.radius = self.cell_size / 2
         self.agent_num = agent_num
         self.pos = [0, 0] * agent_num
@@ -81,7 +81,7 @@ class CrowdSteeringEnv(gym.Env):
         self.prop_speed = [0] * agent_num
         self.target = [0, 0] * agent_num
         self.start = [0, 0] * agent_num
-        self.last_pos = self.pos.copy()  # 上一帧与目标的距离
+        self.last_pos = self.pos.copy()  # 前フレームの位置
         self.total_step = [0] * agent_num
         self.path = AgentPathQueue(agent_num, 200)
         self.color = self.generate_colors(self.agent_num)
@@ -94,13 +94,13 @@ class CrowdSteeringEnv(gym.Env):
         self.action_space = 360
         self.observation_space = self.stack_size * self.single_obs_size
 
-        self.delta_t = 0.01  # 一个时间步长对应的时间，用于统一计算位移与速度积分
-        self.max_speed = 3.0  # 最大移动速度
-        self.perception_range = 120  # 感知范围
-        self.perception_samples = 15  # 隔多少度采样一个位置
-        self.perception_vision_angle = 120  # 视角探测角度，范围（0，360]，以当前朝向顺时针逆时针各转一半均可探测到
+        self.delta_t = 0.01  # 1タイムステップの時間。移動や速度の積分に使用
+        self.max_speed = 3.0  # 最大移動速度
+        self.perception_range = 120  # 知覚範囲
+        self.perception_samples = 15  # 何度ごとにサンプリングするか（角度刻み）
+        self.perception_vision_angle = 120  # 視野角度（0〜360）。現在の向きから左右に等しく広がる角度
         self.perception = [-1] * (
-                    self.perception_vision_angle // self.perception_samples + 1) * agent_num  # 例如180度sample是10度，则会有19个距离检测射线，包含0和180
+                    self.perception_vision_angle // self.perception_samples + 1) * agent_num  # 例: 視野180度、サンプル10度なら0〜180まで19本のレイ
 
         self.render_mode = render_mode
         self.window = None
@@ -122,7 +122,7 @@ class CrowdSteeringEnv(gym.Env):
                 cur_x = math.floor(self.pos[j][0] / self.cell_size)
                 cur_y = math.floor(self.pos[j][1] / self.cell_size)
 
-                # 沿伸方向
+                # 伸長方向
                 if angle < 90 or angle > 270:
                     x_dir = 1
                 elif angle == 90 or angle == 270:
@@ -136,7 +136,7 @@ class CrowdSteeringEnv(gym.Env):
                 else:
                     y_dir = -1
 
-                # 在x方向上沿伸
+                # x方向に伸ばす
                 tar_x = cur_x if x_dir == -1 else cur_x + 1
                 angle = math.radians(angle)
                 while x_dir != 0:
@@ -162,7 +162,7 @@ class CrowdSteeringEnv(gym.Env):
                         break
                     if x_dir > 0:
                         tar_x = tar_x + 1
-                # 在y方向上沿伸
+                # y方向に伸ばす
                 tar_y = cur_y if y_dir < 0 else cur_y + 1
                 while y_dir != 0:
                     if tar_y < 0 or tar_y >= self.rows:
@@ -252,9 +252,9 @@ class CrowdSteeringEnv(gym.Env):
         else:
             return False
 
-    # 随机生成一个可移动的位置
+    # ランダムに移動可能な位置を生成
     def generate_random_position(self):
-        #参数，用于使得生成的位置远离边界
+        # 境界から離れた位置を生成するための閾値パラメータ
         thres = 1
         while True:
             row = random.randint(0 + thres, self.rows - 1 - thres)
@@ -294,7 +294,7 @@ class CrowdSteeringEnv(gym.Env):
         return observation
 
     def step(self, action):
-        # action是一个0-35的数相当于对360度进行了采样，现在要将其还原为二维向量
+        # actionは360度をサンプリングしたインデックスではなく、ここでは各エージェントへ与えられる2Dベクトルとして扱う
         for i in range(self.agent_num):
             a = [j * self.delta_t * self.prop_speed[i] for j in action[i]]
 
@@ -321,7 +321,7 @@ class CrowdSteeringEnv(gym.Env):
         return observation, reward, terminated, arrived, info
 
     def check_collision(self, num):
-        # 先判断agent之间的碰撞
+        # まずエージェント間の衝突を判定
         for i in range(self.agent_num):
             if i != num:
                 if self.distance(self.pos[i], self.pos[num]) < self.radius * 1.2:
@@ -366,12 +366,12 @@ class CrowdSteeringEnv(gym.Env):
         for i in range(self.agent_num):
             distance = self.distance(self.pos[i], self.target[i])
             if distance < self.cell_size:
-                # 计算难度来控制reward大小
+                # 難易度に応じて報酬を調整（現在は固定値150）
                 dis = self.distance(self.start[i], self.target[i])
                 reward[i] = 150 #dis * 888 / self.total_step[i]
                 continue
 
-            # 运动方向对准加分
+            # 進行方向の一致に対する加点
             if self.last_pos[i][0] > 0:
                 v = [x - y for x, y in zip(self.target[i], self.last_pos[i])]
                 v2 = [x - y for x, y in zip(self.pos[i], self.last_pos[i])]
@@ -383,7 +383,7 @@ class CrowdSteeringEnv(gym.Env):
                     if angle_cos > 0:
                         reward[i] += angle_cos * 0.2
 
-            # 距离变近加分
+            # 目的地への距離が近づいたら加点
             if self.last_pos[i][0] > 0:
                 v = [x - y for x, y in zip(self.target[i], self.last_pos[i])]
                 v2 = [x - y for x, y in zip(self.target[i], self.pos[i])]
@@ -393,20 +393,20 @@ class CrowdSteeringEnv(gym.Env):
                     max_val = self.prop_speed[i] * self.delta_t
                     reward[i] += min(dis_last - dis_cur, max_val) / max_val * 0.5
 
-            # 与合适的速度接近的奖励
+            # 望ましい速度に近いほど報酬
             speed = tool.distance(self.v[i], [0, 0])
             speed_dev = math.fabs(speed - self.prop_speed[i])
             #if speed_dev < 0.5:
             #    reward[i] = reward[i] + (math.exp(-speed_dev) - math.exp(-0.5)) * 1.5
             reward[i] = reward[i] + (1 - math.exp(speed_dev * 0.5)) * 0.15
 
-            # 行动惩罚
+            # 行動ペナルティ
             reward[i] += -0.7
-            # 改为不动就惩罚
+            # 停止を罰するように変更（コメント）
             # reward[i] += -abs(self.prop_speed[i] - tool.distance(self.v[i], [0, 0])) * 0.4
 
-            # 障碍过近惩罚
-            # 从中间射线向两侧权值依次减轻
+            # 障害物接近ペナルティ
+            # 中央のレイから両側へウェイトを徐々に減少させる
             rate = [0.0108, 0.0192, 0.0252, 0.0288, 0.03, 0.0288, 0.0252, 0.0192, 0.0108]
             index = 0
             for j in self.perception[i]:
@@ -414,7 +414,7 @@ class CrowdSteeringEnv(gym.Env):
                     reward[i] = reward[i] - math.exp((self.radius - j) / self.radius) * rate[index] * 8
                     index = index + 1
 
-            # 检测碰撞
+            # 衝突を検出
             if self.check_collision(i) or self.total_step[i] >= 6000:
             #if self.check_collision(i):
                 reward[i] = -10
@@ -441,18 +441,18 @@ class CrowdSteeringEnv(gym.Env):
         font = pygame.font.SysFont('Arial', 15)
         for i in range(self.agent_num):
             if draw_path:
-                # 获取代理的路径
+                # エージェントの経路を取得
                 path = self.path.get_positions(i)
                 if path:
-                    # 为当前代理选择一个颜色（循环使用颜色列表）
+                    # 現在のエージェントに色を選択（色リストを循環）
                     color_index = i % len(self.color)
                     color = self.color[color_index]
 
-                    # 绘制路径中的线段
+                    # 経路の線分を描画
                     for j in range(len(path) - 1):
                         pygame.draw.line(screen, color, path[j], path[j + 1], 2)
 
-            # 绘制当前速度
+            # 現在の速度を描画
             if draw_speed:
                 speed = tool.distance(self.v[i], [0, 0])
                 #speed_text = font.render(str("{:.{}f}".format(speed, 1)), True, (255, 0, 0))
@@ -463,18 +463,18 @@ class CrowdSteeringEnv(gym.Env):
                 speed_rect.center = (speed_rect_pos)
                 screen.blit(speed_text, speed_rect)
 
-            # debug用，绘制perception，从agent按照perception各个角度与距离长度画一条线，如果为-1或0则不绘制
+            # デバッグ用: 知覚レイを描画。角度と距離に基づいて線を引く。-1または0は描画しない
             if draw_perception:
                 for angle, dis in enumerate(self.perception[i]):
                     if dis != -1:
                         base_angle = self.get_base_angle(i)
                         angle = base_angle + angle * self.perception_samples
-                        angle_rad = math.radians(angle)  # 将角度转换为弧度
+                        angle_rad = math.radians(angle)  # 角度をラジアンに変換
                         end_point = [self.pos[i][0] + dis * math.cos(angle_rad),
                              self.pos[i][1] - dis * math.sin(angle_rad)]
                         pygame.draw.line(screen, (0, 255, 0), self.pos[i], end_point, 1)
 
-            # debug用，绘制连接target的线条
+            # デバッグ用: 目的地へのラインを描画
             if draw_targetline:
                 speed = tool.distance(self.v[i], [0, 0])
                 color = 255 * speed / self.max_speed
@@ -487,15 +487,15 @@ class CrowdSteeringEnv(gym.Env):
 
     def generate_colors(self, num_colors, saturation=1.0, value=1.0):
         """
-        生成指定数量的区分度较高的颜色。
+        指定した数の識別しやすい色を生成する。
 
-        参数:
-        - num_colors: 要生成的颜色数量。
-        - saturation: 颜色的饱和度（0.0到1.0之间）。
-        - value: 颜色的亮度（0.0到1.0之间）。
+        引数:
+        - num_colors: 生成する色の数
+        - saturation: 彩度（0.0〜1.0）
+        - value: 明度（0.0〜1.0）
 
-        返回:
-        - 一个包含(R, G, B)元组的列表，每个元组代表一种颜色。
+        戻り値:
+        - (R, G, B)タプルのリスト
         """
         colors = []
         hue_step = 360.0 / num_colors
